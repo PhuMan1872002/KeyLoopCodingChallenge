@@ -1,0 +1,167 @@
+@page "/aging-review"
+
+<PageTitle>Aging stock review · Inventory Hub</PageTitle>
+
+<main class="main">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">Aging stock review</h1>
+            <p class="page-sub">
+                Weekly stock meeting · @Formats.Date(Today) · vehicles over
+                @AgingPolicy.AgingThresholdDays days, grouped by logged action
+            </p>
+        </div>
+        <div class="stat-chips">
+            <div class="stat-chip">
+                <div class="stat-chip__label">Aging units</div>
+                <div class="stat-chip__value">@_aging.Count</div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip__label">With a plan</div>
+                <div class="stat-chip__value stat-chip__value--good">@WithPlan</div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip__label">Not reviewed</div>
+                <div class="stat-chip__value stat-chip__value--bad">@Unreviewed.Count</div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip__label">Capital tied up</div>
+                <div class="stat-chip__value">@Formats.MoneyCompact(_aging.Sum(v => v.ListPrice))</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="head-controls">
+        <label class="field">
+            Dealership
+            <select class="select" style="min-width:200px"
+                    value="@(_dealershipId ?? string.Empty)" @onchange="OnBranchChanged">
+                @foreach (var branch in Branches.All)
+                {
+                    <option value="@branch.Id">@branch.Name</option>
+                }
+                <option value="">All branches</option>
+            </select>
+        </label>
+        <a class="btn" href="/"><Icon Name="back" Size="16" Weight="2" />Back to overview</a>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading">Loading aging stock…</div>
+    }
+    else if (_aging.Count == 0)
+    {
+        <section class="panel">
+            <p class="panel__hint">
+                Nothing is over @AgingPolicy.AgingThresholdDays days on this lot. There is no review to hold.
+            </p>
+        </section>
+    }
+    else
+    {
+        <p class="panel__hint board-hint">Drag a card onto another column to log a new decision for it.</p>
+
+        <div class="table-scroll">
+            <div class="board">
+                @if (Unreviewed.Count > 0)
+                {
+                    <section class="board__col board__col--unreviewed" aria-label="Not reviewed">
+                        <div class="board__head">
+                            <h2 class="board__title board__title--unreviewed">Not reviewed</h2>
+                            <span class="board__count board__count--unreviewed">@Unreviewed.Count</span>
+                        </div>
+                        @foreach (var item in Unreviewed)
+                        {
+                            <article class="card" draggable="true"
+                                     @ondragstart="@(() => OnDragStart(item))" @ondragend="OnDragEnd">
+                                <div class="card__top">
+                                    <span class="card__id">@item.StockNumber</span>
+                                    <AgingBadge DaysInStock="@item.DaysInStock(Today)" IsAging="@item.IsAging(Today)"
+                                                Band="@item.AgeBandOn(Today)" DaysOnly="true" Small="true" />
+                                </div>
+                                <div class="card__name">
+                                    @item.ModelYear @item.Make @item.Model @item.Trim
+                                </div>
+                                <div class="card__meta">
+                                    @Formats.Money(item.ListPrice) · @item.Location
+                                </div>
+                                <button type="button" class="card__cta" @onclick="@(() => Open(item))">
+                                    Log action
+                                </button>
+                            </article>
+                        }
+                    </section>
+                }
+
+                @foreach (var group in Grouped)
+                {
+                    <section class="board__col @(_dragOverStatus == group.Key.Status ? "board__col--drop-target" : null)"
+                             aria-label="@group.Key.Label"
+                             @ondragover:preventDefault="true"
+                             @ondragover="@(() => _dragOverStatus = group.Key.Status)"
+                             @ondragleave="@(() => OnDragLeaveColumn(group.Key.Status))"
+                             @ondrop="@(() => OnDropOnColumn(group.Key.Status))">
+                        <div class="board__head">
+                            <h2 class="board__title">@group.Key.Label</h2>
+                            <span class="board__count">@group.Count()</span>
+                        </div>
+                        @foreach (var item in group)
+                        {
+                            var action = item.CurrentAction!;
+                            <article class="card" draggable="true"
+                                     @ondragstart="@(() => OnDragStart(item))" @ondragend="OnDragEnd">
+                                <div class="card__top">
+                                    <span class="card__id">@item.StockNumber</span>
+                                    <AgingBadge DaysInStock="@item.DaysInStock(Today)" IsAging="@item.IsAging(Today)"
+                                                Band="@item.AgeBandOn(Today)" DaysOnly="true" Small="true" />
+                                </div>
+                                <div class="card__name">
+                                    @item.ModelYear @item.Make @item.Model @item.Trim
+                                </div>
+                                <div class="card__meta">
+                                    @if (action.ProposedPrice is { } proposed)
+                                    {
+                                        <s>@Formats.Money(item.ListPrice)</s>
+                                        <text> → </text>
+                                        <b>@Formats.Money(proposed)</b>
+                                    }
+                                    else
+                                    {
+                                        @Formats.Money(item.ListPrice)
+                                        <text> · </text>
+                                        @item.Location
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(action.Note))
+                                {
+                                    <p class="card__note">@action.Note</p>
+                                }
+                                <div class="card__foot @(IsOverdue(action) ? "card__foot--overdue" : null)">
+                                    <span>Logged @Formats.Date(action.RecordedAt)</span>
+                                    <span>@DueLabel(action)</span>
+                                </div>
+                                <button type="button" class="btn--row" style="width:100%"
+                                        @onclick="@(() => Open(item))">
+                                    Update
+                                </button>
+                            </article>
+                        }
+                    </section>
+                }
+            </div>
+        </div>
+    }
+</main>
+
+@if (_selected is { } selected)
+{
+    <LogActionPanel Selected="@selected" InitialStatus="@_pendingStatus" OnClose="Close" OnSave="SaveAction" />
+}
+
+@if (_workflow.Toast is { } toast)
+{
+    <div class="toast" role="status">
+        <Icon Name="check" Weight="2.4" />@toast
+    </div>
+}

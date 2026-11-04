@@ -1,0 +1,323 @@
+@page "/"
+
+<PageTitle>Inventory overview · Inventory Hub</PageTitle>
+
+<main class="main" id="top">
+
+    <header class="page-head">
+        <div>
+            <h1 class="page-title">Inventory overview</h1>
+            <p class="page-sub">
+                <span class="dot-live"></span>
+                Live · updates pushed to every open dashboard · aging rule: over @AgingPolicy.AgingThresholdDays days
+            </p>
+        </div>
+        <div class="head-controls">
+            <label class="field">
+                Dealership
+                <select class="select" style="min-width:200px"
+                        value="@(_filter.DealershipId ?? string.Empty)" @onchange="OnBranchChanged">
+                    @foreach (var branch in Branches.All)
+                    {
+                        <option value="@branch.Id">@branch.Name</option>
+                    }
+                    <option value="">All branches</option>
+                </select>
+            </label>
+            <a class="btn" href="@CsvHref" download>
+                <Icon Name="download" Size="16" Weight="2" />Export CSV
+            </a>
+        </div>
+    </header>
+
+    @if (_statistics is { } k)
+    {
+        <section class="kpis" aria-label="Key metrics">
+            <KpiTile Label="Vehicles in stock"
+                     Value="@k.TotalVehicles.ToString("N0", Formats.Culture)"
+                     Sub="@($"{Formats.MoneyCompact(k.TotalStockValue)} at list price")" />
+
+            <KpiTile Label="Average days in stock"
+                     Value="@k.AverageDaysInStock.ToString("N0", Formats.Culture)"
+                     Sub="Across all units on the lot" />
+
+            <KpiTile Label="@($"Aging stock · over {AgingPolicy.AgingThresholdDays} days")"
+                     Value="@k.AgingVehicles.ToString("N0", Formats.Culture)"
+                     Sub="@($"{(k.AgingShare * 100).ToString("N0", Formats.Culture)}% of units")"
+                     Warn="true" />
+
+            <KpiTile Label="Capital in aging stock"
+                     Value="@Formats.MoneyCompact(k.AgingStockValue)"
+                     Sub="@($"{k.AgingWithoutPlan.ToString("N0", Formats.Culture)} aging units without an action plan")"
+                     Alert="true" />
+        </section>
+
+        <div class="two-up">
+            <section class="panel" aria-labelledby="dist-h">
+                <div>
+                    <h2 id="dist-h" class="panel__title">How long vehicles have been on the lot</h2>
+                    <p class="panel__hint">
+                        Number of vehicles in each days-in-stock band · bands past
+                        @AgingPolicy.AgingThresholdDays days are aging · select one to filter
+                    </p>
+                </div>
+
+                <div class="chart" role="img" aria-label="@DistributionLabel">
+                    @foreach (var bucket in AllBuckets)
+                    {
+                        var count = k.CountIn(bucket);
+                        var aging = bucket == AgeBucket.OverThreshold;
+                        <button type="button"
+                                class="chart__col @(_filter.AgeBucket == bucket ? "is-selected" : null)"
+                                title="@bucket.Label() · @count vehicles"
+                                @onclick="@(() => ToggleBucket(bucket))">
+                            <span class="chart__count">@count.ToString("N0", Formats.Culture)</span>
+                            <div class="chart__bar @(aging ? "chart__bar--aging" : null)"
+                                 style="height:@(BarHeight(count))px"></div>
+                        </button>
+                    }
+                </div>
+                <div class="chart-labels">
+                    @foreach (var bucket in AllBuckets)
+                    {
+                        var aging = bucket == AgeBucket.OverThreshold;
+                        <div class="chart-labels__item">
+                            <div class="chart-labels__name">@bucket.Label()</div>
+                            <div class="chart-labels__tag @(aging ? "chart-labels__tag--aging" : null)">
+                                @bucket.Tag()
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="panel" aria-labelledby="cap-h">
+                <div>
+                    <h2 id="cap-h" class="panel__title">Money tied up in aging stock, by make</h2>
+                    <p class="panel__hint">
+                        Total list price of vehicles over @AgingPolicy.AgingThresholdDays days ·
+                        @Formats.MoneyCompact(k.AgingStockValue) in all
+                    </p>
+                </div>
+                <div class="bars">
+                    @foreach (var make in k.AgingByMake)
+                    {
+                        <div class="bars__row" title="@make.Make · @make.VehicleCount vehicles">
+                            <span>@make.Make</span>
+                            <div class="bars__track">
+                                <div class="bars__fill" style="width:@(Share(make.Value, k.AgingByMake))%"></div>
+                            </div>
+                            <span class="bars__value">@Formats.MoneyCompact(make.Value)</span>
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <section class="panel panel--alert" id="aging" aria-labelledby="aging-h">
+            <div class="spotlight-head">
+                <div class="spotlight-head__left">
+                    <Icon Name="warning" Size="22" Weight="2" />
+                    <h2 id="aging-h" class="panel__title panel__title--lg">Aging stock — needs a decision</h2>
+                    <span class="pill pill--aging">
+                        @k.AgingVehicles vehicles over @AgingPolicy.AgingThresholdDays days
+                    </span>
+                    <span class="pill pill--critical">@k.AgingWithoutPlan not reviewed</span>
+                </div>
+                <button type="button" class="btn btn--outline" @onclick="ShowAllAging">
+                    View all @k.AgingVehicles in list
+                </button>
+            </div>
+
+            @if (_spotlight.Count == 0)
+            {
+                <p class="panel__hint">Every aging vehicle on this lot has a logged decision.</p>
+            }
+            else
+            {
+                <div class="spotlight">
+                    @foreach (var item in _spotlight)
+                    {
+                        <article class="spot">
+                            <div class="spot__top">
+                                <AgingBadge DaysInStock="@item.DaysInStock(Today)" IsAging="@item.IsAging(Today)"
+                                            Band="@item.AgeBandOn(Today)" Verbose="true" />
+                                <span class="spot__id">@item.StockNumber</span>
+                            </div>
+                            <div>
+                                <div class="spot__name">
+                                    @item.ModelYear @item.Make @item.Model
+                                </div>
+                                <div class="spot__meta">
+                                    @item.Trim · @item.Colour · @Formats.Money(item.ListPrice)
+                                </div>
+                            </div>
+                            <div class="status status--needs">
+                                <span class="status__dot status__dot--needs"></span>Not reviewed
+                            </div>
+                            <button type="button" class="btn btn--primary" @onclick="@(() => Open(item))">
+                                Log action
+                            </button>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    <section class="panel panel--flush" id="inventory" aria-labelledby="inv-h">
+        <div class="table-head-bar">
+            <div class="table-head-bar__top">
+                <h2 id="inv-h" class="panel__title panel__title--lg">All vehicles</h2>
+                <span class="count-note" role="status">
+                    Showing <b>@_vehicles.Count.ToString("N0", Formats.Culture)</b>
+                    of @(_statistics?.TotalVehicles.ToString("N0", Formats.Culture) ?? "—") vehicles ·
+                    <b class="aging">@_vehicles.Count(v => v.IsAging(Today)).ToString("N0", Formats.Culture)</b> aging
+                </span>
+            </div>
+
+            <div class="filters">
+                <label class="field field--grow">
+                    Search
+                    <input type="search" class="input" placeholder="Stock #, VIN, model…"
+                           value="@_filter.Search" @onchange="OnSearchChanged" />
+                </label>
+
+                <label class="field field--std">
+                    Make
+                    <select class="select" value="@(_filter.Make ?? string.Empty)" @onchange="OnMakeChanged">
+                        <option value="">All makes</option>
+                        @foreach (var make in _makes)
+                        {
+                            <option value="@make">@make</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="field field--std">
+                    Model
+                    <select class="select" value="@(_filter.Model ?? string.Empty)" @onchange="OnModelChanged">
+                        <option value="">All models</option>
+                        @foreach (var model in _models)
+                        {
+                            <option value="@model">@model</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="field field--std">
+                    Age in stock
+                    <select class="select" value="@(_filter.AgeBucket?.ToString() ?? string.Empty)"
+                            @onchange="OnBucketChanged">
+                        <option value="">Any age</option>
+                        @foreach (var bucket in AllBuckets)
+                        {
+                            <option value="@bucket">@bucket.Label()</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="field field--wide">
+                    Sort by
+                    <select class="select" value="@_filter.Sort" @onchange="OnSortChanged">
+                        <option value="@SortOrder.OldestFirst">Oldest first</option>
+                        <option value="@SortOrder.NewestFirst">Newest first</option>
+                        <option value="@SortOrder.PriceHighToLow">Price, high to low</option>
+                    </select>
+                </label>
+
+                <label class="check">
+                    <input type="checkbox" checked="@_filter.AgingOnly" @onchange="OnAgingOnlyChanged" />
+                    Aging only
+                </label>
+
+                @if (!_filter.IsEmpty)
+                {
+                    <button type="button" class="btn--link" @onclick="ClearFilters">Clear filters</button>
+                }
+            </div>
+        </div>
+
+        <div class="table-scroll">
+            <div class="table-inner">
+                <div class="trow thead">
+                    <span>Vehicle</span>
+                    <span>Stock # / VIN</span>
+                    <span>Location</span>
+                    <span class="right">List price</span>
+                    <span>Days in stock</span>
+                    <span>Action status</span>
+                    <span></span>
+                </div>
+
+                @if (_loading)
+                {
+                    <div class="loading">Loading inventory…</div>
+                }
+                else if (_vehicles.Count == 0)
+                {
+                    <div class="empty">
+                        <div class="empty__title">No vehicles match these filters</div>
+                        <button type="button" class="btn btn--outline" @onclick="ClearFilters">Clear filters</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="tbody">
+                        <Virtualize TItem="Vehicle" Items="@_vehicles" Context="r" ItemSize="69" OverscanCount="6">
+                            <div class="trow tr @(r.NeedsAction(Today) ? "tr--needs" : null)">
+                                <div>
+                                    <div class="cell-name">
+                                        @r.ModelYear @r.Make @r.Model
+                                    </div>
+                                    <div class="cell-sub">@r.Trim · @r.Colour</div>
+                                </div>
+                                <div class="cell-id">
+                                    <div>@r.StockNumber</div>
+                                    <div class="cell-id__vin">…@r.Vin[^8..]</div>
+                                </div>
+                                <div class="cell-loc">@r.Location</div>
+                                <div class="cell-price">@Formats.Money(r.ListPrice)</div>
+                                <div>
+                                    <AgingBadge DaysInStock="@r.DaysInStock(Today)" IsAging="@r.IsAging(Today)" Band="@r.AgeBandOn(Today)" />
+                                </div>
+                                <div>
+                                    <VehicleActionChip Action="@r.CurrentAction" IsAging="@r.IsAging(Today)" />
+                                </div>
+                                <div class="cell-action">
+                                    @if (r.IsAging(Today))
+                                    {
+                                        var verb = r.NeedsAction(Today) ? "Log action" : "Update";
+                                        <button type="button"
+                                                class="btn--row @(r.NeedsAction(Today) ? "is-needed" : null)"
+                                                aria-label="@verb for @r.StockNumber"
+                                                @onclick="@(() => Open(r))">
+                                            @verb
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="cell-none">No action needed</span>
+                                    }
+                                </div>
+                            </div>
+                        </Virtualize>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</main>
+
+@if (_selected is { } selected)
+{
+    <LogActionPanel Selected="@selected" InitialStatus="@selected.CurrentAction?.Status"
+                    OnClose="Close" OnSave="SaveAction" />
+}
+
+@if (_workflow.Toast is { } toast)
+{
+    <div class="toast" role="status">
+        <Icon Name="check" Weight="2.4" />@toast
+    </div>
+}

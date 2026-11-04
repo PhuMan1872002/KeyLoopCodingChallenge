@@ -1,0 +1,53 @@
+<span class="pill pill--@Modifier @(Small ? "pill--sm" : null)" data-testid="@TestId" title="@Title">
+    @if (Verbose)
+    {
+        @Label<span>·</span><span class="mono">@DaysInStock days</span>
+    }
+    else if (DaysOnly)
+    {
+        <span class="mono">@DaysInStock days</span>
+    }
+    else
+    {
+        <span class="mono">@DaysInStock<text>d</text></span>@Label
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public int DaysInStock { get; set; }
+
+    [Parameter, EditorRequired]
+    public bool IsAging { get; set; }
+
+    [Parameter]
+    public AgeBand? Band { get; set; }
+
+    [Parameter]
+    public bool Verbose { get; set; }
+
+    [Parameter]
+    public bool DaysOnly { get; set; }
+
+    [Parameter]
+    public bool Small { get; set; }
+
+    private AgeBand EffectiveBand => Band ?? (IsAging ? AgeBand.Aging : AgeBand.Fresh);
+
+    private string Label => EffectiveBand.Label();
+
+    private string Modifier => EffectiveBand switch
+    {
+        AgeBand.Fresh => "fresh",
+        AgeBand.DueSoon => "duesoon",
+        AgeBand.Aging => "aging",
+        AgeBand.Critical => "critical",
+        _ => "fresh",
+    };
+
+    private string TestId => IsAging ? "aging-flag" : "age-band";
+
+    private string Title => IsAging
+        ? $"In stock {DaysInStock} days — over the {AgingPolicy.AgingThresholdDays}-day aging threshold ({Label}, {EffectiveBand.Range()})"
+        : $"In stock {DaysInStock} days — {Label}, {EffectiveBand.Range()}";
+}

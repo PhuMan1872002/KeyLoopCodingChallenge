@@ -1,0 +1,219 @@
+@using System.Globalization
+
+<div class="overlay">
+    <button type="button" class="overlay__scrim" aria-label="Close panel" @onclick="OnClose"></button>
+
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="panel-h">
+        <div class="drawer__head">
+            <div style="display:flex;flex-direction:column;gap:6px">
+                <span class="drawer__eyebrow">Log action · @(Selected.IsAging(Today) ? "aging vehicle" : "vehicle")</span>
+                <h2 id="panel-h" class="drawer__title">
+                    @Selected.ModelYear @Selected.Make @Selected.Model @Selected.Trim
+                </h2>
+                <div class="drawer__tags">
+                    <AgingBadge DaysInStock="@Selected.DaysInStock(Today)" IsAging="@Selected.IsAging(Today)"
+                                Band="@Selected.AgeBandOn(Today)" Verbose="true" />
+                    <span class="drawer__id">
+                        @Selected.StockNumber · @Formats.Money(Selected.ListPrice)
+                    </span>
+                </div>
+            </div>
+            <button type="button" class="drawer__close" aria-label="Close" @onclick="OnClose">
+                <Icon Name="close" Weight="2" />
+            </button>
+        </div>
+
+        <div class="drawer__body">
+            <div class="facts">
+                <span class="facts__key">Stock # / VIN</span>
+                <span class="facts__val">@Selected.StockNumber · …@Vin8</span>
+
+                <span class="facts__key">Location</span>
+                <span class="facts__val">@Selected.Location</span>
+
+                <span class="facts__key">Current list price</span>
+                <span class="facts__val">@Formats.Money(Selected.ListPrice)</span>
+
+                <span class="facts__key">In stock since</span>
+                <span class="facts__val">@Formats.Date(Selected.StockedOn)</span>
+
+                <span class="facts__key">Floorplan cost to date</span>
+                <span class="facts__val facts__val--external">from the lender feed</span>
+
+                <span class="facts__key">Leads / test drives</span>
+                <span class="facts__val facts__val--external">from CRM</span>
+            </div>
+
+            <fieldset class="options">
+                <legend>Proposed action</legend>
+                @foreach (var status in Enum.GetValues<ActionStatus>())
+                {
+                    <button type="button"
+                            class="option @(_status == status ? "is-selected" : null)"
+                            aria-pressed="@(_status == status)"
+                            @onclick="@(() => _status = status)">
+                        @status.Label()
+                        @if (_status == status)
+                        {
+                            <Icon Name="check" Weight="2.4" />
+                        }
+                    </button>
+                }
+            </fieldset>
+
+            @if (_status == ActionStatus.PriceReductionPlanned)
+            {
+                <label class="stack">
+                    New list price
+                    <input type="text" inputmode="numeric" class="input input--mono"
+                           value="@_priceText" @onchange="OnPriceChanged"
+                           placeholder="e.g. 25990" />
+                    <span class="stack__hint">@PriceHint</span>
+                </label>
+            }
+
+            <label class="stack">
+                Target date
+                <input type="date" class="input"
+                       value="@_targetDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                       min="@Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                       @onchange="OnDateChanged" />
+                <span class="stack__hint">Re-check if unsold by then</span>
+            </label>
+
+            <label class="stack">
+                Note for the team
+                <textarea rows="3" class="textarea" maxlength="280"
+                          placeholder="Why this action, and what happens next"
+                          @bind="_note" @bind:event="oninput"></textarea>
+            </label>
+
+            <div class="history">
+                <div class="history__title">History</div>
+                @foreach (var (entry, index) in History.Select((e, i) => (e, i)))
+                {
+                    <div class="history__item">
+                        <span class="history__dot @(index == 0 ? "history__dot--latest" : null)"></span>
+                        <div>
+                            <div class="history__what">@entry.What</div>
+                            <div class="history__when">@entry.When</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="drawer__foot">
+            <button type="button" class="btn" @onclick="OnClose">Cancel</button>
+            <button type="button" class="btn btn--primary" @onclick="Save">Save action</button>
+        </div>
+    </aside>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Vehicle Selected { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<VehicleAction> OnSave { get; set; }
+
+    [Parameter]
+    public ActionStatus? InitialStatus { get; set; }
+
+    private ActionStatus _status = ActionStatus.PriceReductionPlanned;
+    private string? _note;
+    private string? _priceText;
+    private DateOnly? _targetDate;
+    private string? _openForVin;
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
+
+    private string Vin8 => Selected.Vin.Length <= 8 ? Selected.Vin : Selected.Vin[^8..];
+
+    protected override void OnParametersSet()
+    {
+        if (_openForVin == Selected.Vin)
+        {
+            return;
+        }
+
+        _openForVin = Selected.Vin;
+        _note = null;
+        _priceText = null;
+        _targetDate = null;
+        _status = InitialStatus ?? ActionStatus.PriceReductionPlanned;
+    }
+
+    private decimal? ProposedPrice =>
+        decimal.TryParse(_priceText, NumberStyles.Number, Formats.Culture, out var value) && value > 0
+            ? value
+            : null;
+
+    private string PriceHint
+    {
+        get
+        {
+            if (ProposedPrice is not { } price)
+            {
+                return $"Current list price {Formats.Money(Selected.ListPrice)}";
+            }
+
+            var delta = price - Selected.ListPrice;
+            var sign = delta < 0 ? "−" : "+";
+            return $"{sign}{Formats.Money(Math.Abs(delta))} vs current";
+        }
+    }
+
+    private void OnPriceChanged(ChangeEventArgs e) => _priceText = e.Value?.ToString();
+
+    private void OnDateChanged(ChangeEventArgs e) =>
+        _targetDate = DateOnly.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, out var date)
+            ? date
+            : null;
+
+    private sealed record HistoryEntry(string What, string When);
+
+    private IReadOnlyList<HistoryEntry> History
+    {
+        get
+        {
+            var entries = Selected.Actions
+                .OrderByDescending(a => a.RecordedAt)
+                .Select(a => new HistoryEntry(
+                    string.IsNullOrWhiteSpace(a.Note) ? a.StatusLabel : $"{a.StatusLabel} — {a.Note}",
+                    $"Logged · {Formats.DateTime(a.RecordedAt)}"))
+                .ToList();
+
+            if (Selected.IsAging(Today))
+            {
+                var crossed = Selected.StockedOn.AddDays(AgingPolicy.AgingThresholdDays + 1);
+                entries.Add(new HistoryEntry(
+                    $"Flagged as aging stock (passed {AgingPolicy.AgingThresholdDays} days)",
+                    $"System · {Formats.Date(crossed)}"));
+            }
+
+            entries.Add(new HistoryEntry(
+                "Received into stock",
+                $"Inventory feed · {Formats.Date(Selected.StockedOn)}"));
+
+            return entries;
+        }
+    }
+
+    private Task Save()
+    {
+        var action = new VehicleAction
+        {
+            Status = _status,
+            Note = string.IsNullOrWhiteSpace(_note) ? null : _note.Trim(),
+            ProposedPrice = _status == ActionStatus.PriceReductionPlanned ? ProposedPrice : null,
+            TargetDate = _targetDate,
+            RecordedAt = DateTimeOffset.UtcNow,
+        };
+
+        return OnSave.InvokeAsync(action);
+    }
+}
