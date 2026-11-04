@@ -1,0 +1,43 @@
+@if (!IsAging)
+{
+    <div class="status status--none" data-testid="action-chip">—</div>
+}
+else if (Action is null)
+{
+    <div class="status status--needs" data-testid="action-chip">
+        <span class="status__dot status__dot--needs"></span>Not reviewed
+    </div>
+    <div class="status__sub">No plan logged yet</div>
+}
+else
+{
+    <div class="status status--planned" data-testid="action-chip" title="@Action.Note">
+        <span class="status__dot status__dot--planned"></span>@Action.StatusLabel
+    </div>
+    <div class="status__sub">@SubLine</div>
+}
+
+@code {
+    [Parameter]
+    public VehicleAction? Action { get; set; }
+
+    [Parameter]
+    public bool IsAging { get; set; }
+
+    private string SubLine
+    {
+        get
+        {
+            if (Action is null)
+            {
+                return string.Empty;
+            }
+
+            var logged = $"Logged {Formats.Date(Action.RecordedAt)}";
+
+            return Action.TargetDate is { } due
+                ? $"{logged} · due {Formats.Date(due)}"
+                : logged;
+        }
+    }
+}

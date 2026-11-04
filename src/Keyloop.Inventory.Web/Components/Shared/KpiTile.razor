@@ -1,0 +1,25 @@
+<div class="kpi @(Warn ? "kpi--warn" : null)">
+    <div class="kpi__label">@Label</div>
+    <div class="kpi__value">@Value</div>
+    @if (Sub is not null)
+    {
+        <div class="kpi__sub @(Alert ? "kpi__sub--alert" : null)">@Sub</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Sub { get; set; }
+
+    [Parameter]
+    public bool Warn { get; set; }
+
+    [Parameter]
+    public bool Alert { get; set; }
+}

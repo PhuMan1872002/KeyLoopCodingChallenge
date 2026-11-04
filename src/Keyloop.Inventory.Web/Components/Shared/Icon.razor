@@ -1,0 +1,59 @@
+<svg width="@Size" height="@Size" viewBox="0 0 24 24" fill="none" stroke="@Stroke"
+     stroke-width="@Weight" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    @switch (Name)
+    {
+        case "logo":
+            <path d="M3 7l9-4 9 4-9 4-9-4z" />
+            <path d="M3 12l9 4 9-4" />
+            <path d="M3 17l9 4 9-4" />
+            break;
+
+        case "overview":
+            <rect x="3" y="3" width="7" height="9" rx="1" />
+            <rect x="14" y="3" width="7" height="5" rx="1" />
+            <rect x="14" y="12" width="7" height="9" rx="1" />
+            <rect x="3" y="16" width="7" height="5" rx="1" />
+            break;
+
+        case "board":
+            <rect x="3" y="4" width="5" height="16" rx="1" />
+            <rect x="10" y="4" width="5" height="11" rx="1" />
+            <rect x="17" y="4" width="4" height="7" rx="1" />
+            break;
+
+        case "download":
+            <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+            break;
+
+        case "warning":
+            <path d="M12 3l9 16H3z" />
+            <path d="M12 10v4M12 17v.5" />
+            break;
+
+        case "check":
+            <path d="M5 12l5 5 9-10" />
+            break;
+
+        case "close":
+            <path d="M6 6l12 12M18 6L6 18" />
+            break;
+
+        case "back":
+            <path d="M15 6l-6 6 6 6" />
+            break;
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public int Size { get; set; } = 18;
+
+    [Parameter]
+    public string Stroke { get; set; } = "currentColor";
+
+    [Parameter]
+    public string Weight { get; set; } = "1.8";
+}

@@ -1,0 +1,78 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+
+@inject InventoryQueryService Inventory
+@inject IInventoryNotifier Notifications
+@inject IBranchDirectory Branches
+
+<div class="shell">
+    <nav class="sidebar @(_collapsed ? "sidebar--collapsed" : null)" aria-label="Main">
+        <div class="sidebar__brand">
+            <Icon Name="logo" Size="28" />
+            <span class="sidebar__brand-name">Inventory Hub</span>
+            <button type="button" class="sidebar__toggle"
+                    title="@(_collapsed ? "Expand sidebar" : "Collapse sidebar")"
+                    aria-label="@(_collapsed ? "Expand sidebar" : "Collapse sidebar")"
+                    aria-pressed="@_collapsed"
+                    @onclick="ToggleCollapsed">
+                <Icon Name="back" Size="16" Weight="2.2" />
+            </button>
+        </div>
+
+        <div class="sidebar__nav">
+            <NavLink class="navlink" ActiveClass="active" href="" Match="NavLinkMatch.All" title="Overview">
+                <Icon Name="overview" />
+                <span class="navlink__label">Overview</span>
+            </NavLink>
+            <NavLink class="navlink" ActiveClass="active" href="aging-review" title="Aging review">
+                <Icon Name="board" />
+                <span class="navlink__label">Aging review</span>
+                @if (_needsAction > 0)
+                {
+                    <span class="navlink__count">@_needsAction</span>
+                }
+            </NavLink>
+        </div>
+
+        <div class="sidebar__user">
+            <div class="avatar">IM</div>
+            <div class="sidebar__user-info">
+                <div class="sidebar__user-name">Inventory Manager</div>
+                <div class="sidebar__user-branch">@Branches.Default.Name</div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="content @(_collapsed ? "content--collapsed" : null)">
+        @Body
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private IDisposable? _subscription;
+    private int _needsAction;
+    private bool _collapsed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _subscription = Notifications.Subscribe(_ => InvokeAsync(RefreshAsync));
+        await RefreshAsync();
+    }
+
+    private void ToggleCollapsed() => _collapsed = !_collapsed;
+
+    private async Task RefreshAsync()
+    {
+        var stats = await Inventory.GetStatisticsAsync(DateOnly.FromDateTime(DateTime.UtcNow));
+        _needsAction = stats.AgingWithoutPlan;
+        StateHasChanged();
+    }
+
+    public void Dispose() => _subscription?.Dispose();
+}

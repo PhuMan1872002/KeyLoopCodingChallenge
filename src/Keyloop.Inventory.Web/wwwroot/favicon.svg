@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Inventory Hub">
+  <!-- The same stacked-layers mark the sidebar carries, on the application's navy.
+       An SVG favicon stays sharp at every tab size and needs no second asset. -->
+  <rect width="32" height="32" rx="7" fill="#0F1B2D"/>
+  <g transform="translate(4 4)" fill="none" stroke="#7FA7E6" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 7l9-4 9 4-9 4-9-4z"/>
+    <path d="M3 12l9 4 9-4"/>
+    <path d="M3 17l9 4 9-4"/>
+  </g>
+</svg>

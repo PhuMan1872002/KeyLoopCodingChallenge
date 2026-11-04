@@ -1,0 +1,35 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Test results
+TestResults/
+coverage/
+*.trx
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Challenge brief (not part of the deliverable)
+KeyloopCodingChallange.pdf
+
+# Generated mock data store (regenerated on first run)
+App_Data/
+*.tmp
+
+# The UI mock-up, kept locally rather than committed as a 430 KB self-extracting bundle.
+Intelligent Inventory Dashboard.html
+
+# Presentation notes for the video, not part of the deliverable
+docs/video-script.md

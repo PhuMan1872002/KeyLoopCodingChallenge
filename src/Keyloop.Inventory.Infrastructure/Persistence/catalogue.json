@@ -1,0 +1,88 @@
+{
+  "branches": [
+    { "id": "DLR-001", "name": "Downtown branch", "share": 62 },
+    { "id": "DLR-002", "name": "Eastside branch", "share": 38 }
+  ],
+
+  "makes": [
+    {
+      "make": "Toyota",
+      "code": "TY",
+      "models": [
+        { "model": "Camry",   "trims": ["LE", "SE", "XSE"],          "lowPrice": 26500, "highPrice": 34000 },
+        { "model": "Corolla", "trims": ["L", "LE", "SE"],            "lowPrice": 21500, "highPrice": 27000 },
+        { "model": "RAV4",    "trims": ["LE", "XLE", "Limited"],     "lowPrice": 29500, "highPrice": 39000 }
+      ]
+    },
+    {
+      "make": "Honda",
+      "code": "HN",
+      "models": [
+        { "model": "CR-V",  "trims": ["LX", "EX", "EX-L"],        "lowPrice": 29000, "highPrice": 38000 },
+        { "model": "Civic", "trims": ["LX", "Sport", "Touring"],  "lowPrice": 23000, "highPrice": 31000 }
+      ]
+    },
+    {
+      "make": "Ford",
+      "code": "FD",
+      "models": [
+        { "model": "F-150",  "trims": ["XL", "XLT", "Lariat"],           "lowPrice": 38000, "highPrice": 56000 },
+        { "model": "Escape", "trims": ["Base", "ST-Line", "Platinum"],   "lowPrice": 27000, "highPrice": 36000 }
+      ]
+    },
+    {
+      "make": "Nissan",
+      "code": "NS",
+      "models": [
+        { "model": "Altima", "trims": ["S", "SV", "SL"],         "lowPrice": 24000, "highPrice": 32000 },
+        { "model": "Rogue",  "trims": ["S", "SV", "Platinum"],   "lowPrice": 27000, "highPrice": 36500 }
+      ]
+    },
+    {
+      "make": "Hyundai",
+      "code": "HY",
+      "models": [
+        { "model": "Tucson",  "trims": ["SE", "SEL", "Limited"],  "lowPrice": 26500, "highPrice": 35000 },
+        { "model": "Elantra", "trims": ["SE", "SEL", "N Line"],   "lowPrice": 20500, "highPrice": 26500 }
+      ]
+    },
+    {
+      "make": "Kia",
+      "code": "KI",
+      "models": [
+        { "model": "Sorento", "trims": ["LX", "S", "EX"], "lowPrice": 29500, "highPrice": 39000 }
+      ]
+    },
+    {
+      "make": "Mazda",
+      "code": "MZ",
+      "models": [
+        { "model": "CX-5", "trims": ["S", "Preferred", "Premium"], "lowPrice": 27000, "highPrice": 36000 }
+      ]
+    },
+    {
+      "make": "Chevrolet",
+      "code": "CH",
+      "models": [
+        { "model": "Malibu", "trims": ["LS", "LT", "RS"], "lowPrice": 21000, "highPrice": 28500 }
+      ]
+    }
+  ],
+
+  "colours": [
+    "Midnight Black", "Platinum White", "Carbonized Gray", "Blueprint", "Amazon Gray",
+    "Gun Metallic", "Atlas Blue", "Rallye Red", "Celestial Silver", "Deep Ocean",
+    "Snowfall Pearl", "Soul Red"
+  ],
+
+  "lots": ["Lot A", "Lot B", "Lot C", "Overflow"],
+
+  "priorDecisions": [
+    { "status": "PriceReductionPlanned",   "note": "Match comparable listings nearby and clear before quarter end." },
+    { "status": "MarketingPromotion",      "note": "Feature in the monthly email campaign and on the homepage banner." },
+    { "status": "TransferToBranch",        "note": "Move to the other branch — stronger demand for this body style there." },
+    { "status": "WholesaleOrAuction",      "note": "Consign to the next dealer auction if it does not sell this month." },
+    { "status": "Reconditioning",          "note": "Wheel refurb and full detail before it goes back on the front line." },
+    { "status": "HoldForCustomerDeposit",  "note": "Deposit taken; finance approval pending with the customer." }
+  ]
+}
